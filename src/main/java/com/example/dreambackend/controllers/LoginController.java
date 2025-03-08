@@ -2,6 +2,7 @@ package com.example.dreambackend.controllers;
 
 import com.example.dreambackend.entities.NhanVien;
 import com.example.dreambackend.services.nhanvien.NhanVienService;
+import com.example.dreambackend.ultil.JwtUtil;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import javax.naming.AuthenticationException;
@@ -25,22 +27,33 @@ public class LoginController {
     @Autowired
     private AuthenticationManager authenticationManager;
 
+    @Autowired
+    private JwtUtil jwtUtil;
     /**
      * API đăng nhập
      */
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestParam String email, @RequestParam String password) {
-        // Gọi phương thức login từ NhanVienService để kiểm tra thông tin và thực hiện đăng nhập
-        ResponseEntity<?> nhanVien = nhanVienService.login(email, password);
+        try {
+            // Step 1: Authenticate the user using the AuthenticationManager
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, password)
+            );
 
-        if (nhanVien != null) {
-            // Nếu đăng nhập thành công, trả về thông tin nhân viên
-            return ResponseEntity.ok(nhanVien);
-        } else {
-            // Nếu thông tin đăng nhập sai, trả về lỗi 401 Unauthorized
+            // Step 2: Load user details after authentication
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+
+            // Step 3: Generate the JWT token for the authenticated user
+            String token = jwtUtil.generateToken(userDetails.getUsername(), "ROLE_USER"); // You can dynamically set the role
+
+            // Step 4: Return the response with JWT token
+            return ResponseEntity.ok().body("Bearer " + token);
+
+        } catch (Exception e) {
+            // If authentication fails, return an unauthorized status
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Email hoặc mật khẩu không đúng.");
         }
     }
-    }
+}
 

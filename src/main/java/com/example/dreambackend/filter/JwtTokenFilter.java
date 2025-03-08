@@ -32,7 +32,15 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         String token = getJwtFromRequest(request);
         if (token != null && jwtUtil.validateToken(token, jwtUtil.extractUsername(token))) {
             Claims claims = jwtUtil.extractClaims(token);
-            SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(claims.getSubject(), null, new ArrayList<>()));
+            String username = claims.getSubject();
+            String role = claims.get("role", String.class); // Extract the role from claims
+
+            // Create an authentication token with roles
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(username, null, new ArrayList<>());
+            authentication.setDetails(role); // Setting the role in the details
+
+            // Set the authentication in the SecurityContext
+            SecurityContextHolder.getContext().setAuthentication(authentication);
         }
         filterChain.doFilter(request, response);
     }
